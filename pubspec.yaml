@@ -1,0 +1,31 @@
+name: bubble_pop
+description: Juego de explotar burbujas. ¡Relájate y suma puntos explotando burbujas!
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  audioplayers: ^5.0.0
+  shared_preferences: ^2.2.0
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/bubble1.png
+    - assets/images/bubble2.png
+    - assets/images/bubble3.png
+    - assets/sounds/pop.mp3
+    # - assets/sounds/music.mp3
+    - assets/sounds/bubble_spawn.mp3
+    - assets/icon/icon.png
