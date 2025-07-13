@@ -111,35 +111,45 @@ Esto creará los iconos para Android e iOS automáticamente.
 
 ## Configuración de Anuncios (AdMob)
 
-1. **Crea una cuenta en [Google AdMob](https://admob.google.com/).**
-2. **Registra tu app y obtén el App ID y los Block IDs** (banner, intersticial, rewarded, etc.).
-3. **Agrega el plugin en `pubspec.yaml`:**
-   ```yaml
-   google_mobile_ads: ^5.0.0
-   ```
-4. **Implementa los anuncios en tu código:**
-   - Importa el paquete:  
-     ```dart
-     import 'package:google_mobile_ads/google_mobile_ads.dart';
-     ```
-   - Inicializa y muestra los anuncios usando los IDs obtenidos de AdMob.
-   - Usa IDs de prueba durante el desarrollo.
+✅ **Integración AdMob completada**
 
-5. **Configura el App ID en los archivos nativos:**
+La app ya tiene integrada la funcionalidad de anuncios AdMob en todas las pantallas principales. Los banners aparecen automáticamente en la parte inferior de cada pantalla.
 
-   - **Android:**  
-     Edita `android/app/src/main/AndroidManifest.xml` y agrega dentro de `<application>`:
-     ```xml
-     <meta-data
-         android:name="com.google.android.gms.ads.APPLICATION_ID"
-         android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY"/>
-     ```
-   - **iOS:**  
-     Edita `ios/Runner/Info.plist` y agrega:
-     ```xml
-     <key>GADApplicationIdentifier</key>
-     <string>ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY</string>
-     ```
+### Configuración implementada:
+
+**1. Dependencias agregadas:**
+- `google_mobile_ads: ^5.0.0` en `pubspec.yaml`
+
+**2. Configuración nativa:**
+- **Android:** App ID configurado en `AndroidManifest.xml`
+  ```xml
+  <meta-data
+      android:name="com.google.android.gms.ads.APPLICATION_ID"
+      android:value="ca-app-pub-8618860832262188~6239080999"/>
+  ```
+
+**3. IDs de AdMob utilizados:**
+- **App ID:** `ca-app-pub-8618860832262188~6239080999`
+- **Banner Ad Unit ID:** `ca-app-pub-8618860832262188/9820584425`
+
+**4. Pantallas con banners:**
+- ✅ StartScreen (pantalla de inicio)
+- ✅ GameScreen (pantalla de juego)
+- ✅ ResultScreen (pantalla de resultados)
+- ✅ PauseMenu (menú de pausa)
+
+**5. Características técnicas:**
+- Inicialización automática de MobileAds en `main.dart`
+- Widget AdmobBanner reutilizable
+- Manejo de errores de carga de anuncios
+- Placeholder mientras cargan los anuncios
+
+### Para desarrollo y pruebas:
+
+Durante el desarrollo, los anuncios de prueba aparecerán automáticamente. Para usar anuncios reales en producción, asegúrate de que:
+1. La app esté firmada con el certificado de release
+2. La app esté publicada en Play Store
+3. Los IDs de AdMob estén correctamente configurados en la consola de AdMob
 
 ---
 
@@ -162,19 +172,49 @@ Esto creará los iconos para Android e iOS automáticamente.
   <string>Bubble Pop</string>
   ```
 
-### **Subir a Google Play**
+### **Subir a Google Play Store con AdMob**
 
-1. Genera el APK o AAB:
+**Preparación previa:**
+1. ✅ AdMob integrado y funcionando
+2. ✅ App ID y Banner Ad Unit ID configurados
+3. ✅ Inicialización de MobileAds implementada
+
+**Pasos para publicar:**
+
+1. **Crear archivo de release APK/AAB:**
    ```sh
    flutter build apk --release
-   # o
+   # o para App Bundle (recomendado)
    flutter build appbundle --release
    ```
-2. Sube el archivo generado a la [Google Play Console](https://play.google.com/console/).
-3. Completa la información requerida y publica.
 
-**Nota:**  
-Asegúrate de cumplir con las políticas de Google Play y de incluir una política de privacidad si usas anuncios.
+2. **Verificar configuración AdMob:**
+   - Confirmar que los IDs de AdMob son de producción (no de prueba)
+   - Verificar que la app esté vinculada correctamente en AdMob Console
+
+3. **Configurar Play Console:**
+   - Sube el archivo generado a [Google Play Console](https://play.google.com/console/)
+   - Completa la información de la app
+   - **Importante:** Agrega una política de privacidad (obligatorio para apps con anuncios)
+
+4. **Política de Privacidad para AdMob:**
+   Debe incluir información sobre:
+   - Uso de Google AdMob
+   - Recopilación de datos para personalización de anuncios
+   - Derechos del usuario sobre sus datos
+   - Enlace a la política de privacidad de Google
+
+5. **Consideraciones importantes:**
+   - Las apps con anuncios requieren política de privacidad
+   - Los anuncios reales solo aparecen después de la aprobación de Play Store
+   - Puede tomar 24-48 horas para que los anuncios comiencen a aparecer
+   - Monitorea el rendimiento en AdMob Console
+
+**Estado actual:**
+- ✅ Integración técnica completa
+- ✅ Banners en todas las pantallas principales
+- ✅ Configuración AdMob correcta
+- 📋 Lista para builds de release y publicación
 
 ---
 
