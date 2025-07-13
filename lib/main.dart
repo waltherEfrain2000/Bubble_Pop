@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/start_screen.dart';
 import 'screens/game_screen_.dart'  ;
 import 'screens/result_screen.dart';
 import 'screens/pause_menu.dart';
 
-void main() => runApp(const BubblePopApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
+  runApp(const BubblePopApp());
+}
 
 class BubblePopApp extends StatelessWidget {
   const BubblePopApp({super.key});

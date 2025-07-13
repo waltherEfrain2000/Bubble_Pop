@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/admob_banner.dart';
 
 class PauseMenu extends StatelessWidget {
   final VoidCallback? onContinue;
@@ -34,6 +35,7 @@ class PauseMenu extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AdmobBanner(),
     );
   }
 }
