@@ -31,7 +31,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ccom.walther.bubblepop"
+        applicationId = "com.walther.bubblepop"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

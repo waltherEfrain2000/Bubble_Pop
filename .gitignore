@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Add exclusions for temporary files
+flutter_linux_*.tar.xz
+*.tar.xz
