@@ -3,6 +3,7 @@ import '../game/game_controller.dart';
 import '../widgets/bubble_widget.dart';
 import 'result_screen.dart';
 import 'pause_menu.dart';
+import '../widgets/admob_banner.dart'; // <- Importa el banner
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -136,6 +137,7 @@ class _GameScreenState extends State<GameScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const AdmobBanner(), // <- ¡Banner aquí!
     );
   }
 }

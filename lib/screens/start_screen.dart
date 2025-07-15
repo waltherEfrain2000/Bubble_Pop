@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/admob_banner.dart'; // 1. Importa el widget de AdMob
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -35,6 +36,7 @@ class StartScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AdmobBanner(), // 2. Agrega el banner aquí
     );
   }
 }

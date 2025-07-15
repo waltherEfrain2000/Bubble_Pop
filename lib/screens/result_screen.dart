@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/admob_banner.dart'; // Importa el banner
 
 class ResultScreen extends StatelessWidget {
   final int score;
@@ -71,6 +72,7 @@ class ResultScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AdmobBanner(), // Banner AdMob aquí
     );
   }
 }
