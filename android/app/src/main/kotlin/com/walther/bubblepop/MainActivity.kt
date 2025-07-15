@@ -1,4 +1,4 @@
-package com.example.bubble_pop
+package com.walther.bubblepop
 
 import io.flutter.embedding.android.FlutterActivity
 

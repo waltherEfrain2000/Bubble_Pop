@@ -9,7 +9,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 plugins {
-    id("com.walther.bubblepop")
+    id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -31,7 +31,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ccom.walther.bubblepop"
+        applicationId = "com.walther.bubblepop"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
