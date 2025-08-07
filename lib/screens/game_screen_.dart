@@ -3,7 +3,7 @@ import '../game/game_controller.dart';
 import '../widgets/bubble_widget.dart';
 import 'result_screen.dart';
 import 'pause_menu.dart';
-import '../widgets/admob_banner.dart'; // <- Importa el banner
+import '../widgets/admob_banner.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -12,12 +12,15 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late GameController controller;
+  bool showLifeNotification = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance
+        .addObserver(this); // Escuchar cambios de estado de la app
     controller = GameController(
       onUpdate: () => setState(() {}),
       onGameOver: (score, highScore) {
@@ -34,8 +37,36 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remover observer
     controller.dispose();
     super.dispose();
+  }
+
+  // Detectar cuando la app va a segundo plano
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        // App en segundo plano o cerrada - pausar juego
+        if (controller.isRunning && !controller.isPaused) {
+          controller.pauseGame();
+        }
+        break;
+      case AppLifecycleState.resumed:
+        // App regresó al primer plano - NO reanudar automáticamente
+        // El usuario debe presionar continuar manualmente
+        break;
+      case AppLifecycleState.hidden:
+        // App oculta pero aún en memoria
+        if (controller.isRunning && !controller.isPaused) {
+          controller.pauseGame();
+        }
+        break;
+    }
   }
 
   void _pauseGame() {
@@ -57,11 +88,18 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [Color(0xffaeefff), Color(0xffeef9ff)],
+            colors: controller.powerUpActive
+                ? [
+                    const Color(0xff8e44ad)
+                        .withOpacity(0.3), // Púrpura durante power-up
+                    const Color(0xff9b59b6).withOpacity(0.3),
+                    const Color(0xffaeefff),
+                  ]
+                : [const Color(0xffaeefff), const Color(0xffeef9ff)],
           ),
         ),
         child: Stack(
@@ -69,15 +107,18 @@ class _GameScreenState extends State<GameScreen> {
             ...controller.bubbles.map((bubble) => BubbleWidget(
                   key: bubble.key,
                   bubble: bubble,
+                  isPaused: controller.isPaused, // Pasar estado de pausa
                   onPop: () => controller.popBubble(bubble),
-                  onRemoveWithoutSound: () => controller.removeBubbleWithoutSound(bubble),
+                  onRemoveWithoutSound: () =>
+                      controller.removeBubbleWithoutSound(bubble),
                 )),
             // Puntaje y pausa
             Positioned(
               top: 40,
               left: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(16),
@@ -98,10 +139,48 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                           ],
                         )),
+                    Text('Burbujas: ${controller.bubblesPopped}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                        )),
+                    Text('Próxima vida: ${controller.nextLifeAt}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.bold,
+                        )),
+                    // Indicador de power-up
+                    if (controller.powerUpActive)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '💖 POWER-UP ACTIVO',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    else
+                      Text('Próximo power-up: ${controller.nextPowerUpAt}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.purpleAccent,
+                            fontWeight: FontWeight.bold,
+                          )),
                     Row(
                       children: [
                         const Text('⭐',
-                            style: TextStyle(fontSize: 22, color: Colors.yellowAccent)),
+                            style: TextStyle(
+                                fontSize: 22, color: Colors.yellowAccent)),
                         const SizedBox(width: 6),
                         Text('Best: ${controller.highScore}',
                             style: const TextStyle(
@@ -112,11 +191,14 @@ class _GameScreenState extends State<GameScreen> {
                       ],
                     ),
                     Row(
-                      children: List.generate(3, (i) {
+                      children: List.generate(7, (i) {
+                        // Mostrar hasta 7 vidas (era 5)
                         return Icon(
                           Icons.favorite,
-                          color: (i < 3 - controller.bubblesMissed) ? Colors.red : Colors.grey,
-                          size: 24,
+                          color: (i < controller.currentLives)
+                              ? Colors.red
+                              : Colors.grey.withOpacity(0.3),
+                          size: 20, // Más pequeñas para que quepan (era 24)
                         );
                       }),
                     ),
@@ -124,7 +206,7 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
             ),
-           
+
             // Botón Pausa
             Positioned(
               top: 40,
