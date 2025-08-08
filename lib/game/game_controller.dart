@@ -19,10 +19,18 @@ class GameController {
   int bubblesMissed = 0;
   int maxLives = 5; // Más vidas máximas para facilitar
   int currentLives = 5; // Más vidas iniciales
-  int baseSpeed = 4500; // Más lento (era 3500)
-  int baseInterval = 1800; // Más lento (era 1200)
+  int baseSpeed = 6000; // Mucho más lento al principio (era 4500)
+  int baseInterval =
+      2500; // Intervalo más largo para mejor distribución (era 1800)
   bool isRunning = false;
   bool isPaused = false;
+
+  // Sistema anti-amontonamiento mejorado
+  final List<Offset> _recentPositions = [];
+  final double _minDistance =
+      120.0; // Distancia mínima aumentada para evitar pegado visual
+  double _screenWidth = 400.0; // Ancho por defecto
+  int _lastUsedZone = -1; // Para alternar zonas
 
   // Sistema de vidas extra (más fácil de conseguir)
   int nextLifeAt = 30; // Próxima vida a los 30 puntos (era 50)
@@ -45,6 +53,91 @@ class GameController {
     required this.onUpdate,
     required this.onGameOver,
   });
+
+  // Configurar el tamaño de pantalla
+  void setScreenSize(double width) {
+    _screenWidth = width;
+  }
+
+  // Generar posición única sin superposición usando más zonas y tamaños reales
+  Offset _generateUniquePosition(double bubbleSize) {
+    const int totalZones = 8; // Más zonas para mejor distribución
+    const int maxAttempts = 30; // Más intentos
+
+    // Usar la mitad del tamaño de la burbuja como radio de seguridad
+    double safetyRadius = bubbleSize / 2;
+    double minDistanceForSize = _minDistance + safetyRadius;
+
+    // Intentar usar zona diferente a la anterior
+    int startZone = (_lastUsedZone + 1) % totalZones;
+
+    for (int zoneOffset = 0; zoneOffset < totalZones; zoneOffset++) {
+      int currentZone = (startZone + zoneOffset) % totalZones;
+
+      for (int attempt = 0; attempt < maxAttempts ~/ totalZones; attempt++) {
+        // Calcular límites de la zona considerando el tamaño de la burbuja
+        double zoneWidth = _screenWidth / totalZones;
+        double zoneStartX = currentZone * zoneWidth;
+        double zoneEndX = zoneStartX + zoneWidth - bubbleSize;
+
+        if (zoneEndX <= zoneStartX) continue; // Zona muy pequeña
+
+        // Generar posición en esta zona
+        double x = zoneStartX + random.nextDouble() * (zoneEndX - zoneStartX);
+        final Offset newPosition = Offset(x, 0);
+
+        // Verificar si la posición está libre considerando el tamaño
+        bool isPositionFree = true;
+        for (final recentPos in _recentPositions) {
+          final double distance = (newPosition - recentPos).distance;
+          if (distance < minDistanceForSize) {
+            isPositionFree = false;
+            break;
+          }
+        }
+
+        // Verificar también con burbujas existentes usando sus tamaños reales
+        if (isPositionFree) {
+          for (final bubble in bubbles) {
+            final double distance = (newPosition - bubble.position).distance;
+            double requiredDistance = minDistanceForSize + (bubble.size / 2);
+            if (distance < requiredDistance) {
+              isPositionFree = false;
+              break;
+            }
+          }
+        }
+
+        if (isPositionFree) {
+          // Agregar la posición a las recientes
+          _recentPositions.add(newPosition);
+          _lastUsedZone = currentZone;
+
+          // Mantener solo las últimas 15 posiciones
+          if (_recentPositions.length > 15) {
+            _recentPositions.removeAt(0);
+          }
+
+          return newPosition;
+        }
+      }
+    }
+
+    // Fallback: usar distribución forzada por zona considerando tamaño
+    int fallbackZone = (_lastUsedZone + 1) % totalZones;
+    double zoneWidth = _screenWidth / totalZones;
+    double x = fallbackZone * zoneWidth + (zoneWidth - bubbleSize) / 2;
+    x = x.clamp(bubbleSize / 2, _screenWidth - bubbleSize / 2);
+
+    _lastUsedZone = fallbackZone;
+    return Offset(x, 0);
+  }
+
+  // Limpiar posiciones al reiniciar
+  void _clearRecentPositions() {
+    _recentPositions.clear();
+    _lastUsedZone = -1; // Resetear zona
+  }
 
   Future<void> loadHighScore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -139,6 +232,11 @@ class GameController {
     powerUpActive = false; // Resetear power-up
     powerUpStartTime = null;
     bubbles.clear();
+    _clearRecentPositions(); // Limpiar posiciones para evitar amontonamiento
+
+    // Configurar tamaño de pantalla
+    _screenWidth = MediaQuery.of(context).size.width;
+
     // await musicPlayer.play(
     //   AssetSource('sounds/music.mp3'),
     //   volume: 0.4,
@@ -162,9 +260,26 @@ class GameController {
       // Aplicar efectos del power-up (reducir dificultad)
       int difficultyMultiplier =
           powerUpActive ? 2 : 1; // Más lento cuando hay power-up
-      int interval = (baseInterval - min(bubblesPopped * 3, 800))
-          .clamp(300, baseInterval)
-          .toInt();
+
+      // Intervalo ajustado para mejor distribución temporal
+      int interval;
+      if (bubblesPopped < 50) {
+        // Fase inicial: intervalos más largos para evitar amontonamiento
+        interval = (baseInterval - min(bubblesPopped * 10, 600))
+            .clamp(1800, baseInterval)
+            .toInt();
+      } else if (bubblesPopped < 100) {
+        // Fase intermedia: intervalos medianos
+        interval = (baseInterval - min(bubblesPopped * 15, 1000))
+            .clamp(1200, baseInterval)
+            .toInt();
+      } else {
+        // Fase avanzada: intervalos más cortos pero controlados
+        interval = (baseInterval - min(bubblesPopped * 20, 1600))
+            .clamp(800, baseInterval)
+            .toInt();
+      }
+
       interval *= difficultyMultiplier; // Duplicar intervalo si hay power-up
 
       await Future.delayed(Duration(milliseconds: interval));
@@ -172,62 +287,103 @@ class GameController {
       // Verificar nuevamente si no está pausado antes de crear burbujas
       if (!isRunning || isPaused) continue;
 
-      // Menos burbujas durante power-up
-      int bubblesThisCycle = powerUpActive
-          ? 1 // Solo 1 burbuja durante power-up
-          : 1 + (bubblesPopped ~/ 15);
+      // Configuración mejorada: burbujas controladas y bien espaciadas
+      int maxBubblesOnScreen =
+          powerUpActive ? 5 : 8; // Reducir cantidad en pantalla
 
-      for (int i = 0; i < bubblesThisCycle; i++) {
-        if (!isRunning || isPaused) break; // Verificar en cada iteración
+      // Reducir burbujas por ciclo para mejor distribución temporal
+      int bubblesThisCycle;
+      if (bubblesPopped < 50) {
+        // Fase inicial: 1-2 burbujas por ciclo para evitar amontonamiento
+        bubblesThisCycle =
+            powerUpActive ? 1 : (1 + (bubblesPopped % 30 == 0 ? 1 : 0));
+        maxBubblesOnScreen =
+            powerUpActive ? 5 : 8; // Menos burbujas en pantalla
+      } else if (bubblesPopped < 100) {
+        // Fase intermedia: 1-2 burbujas por ciclo
+        bubblesThisCycle =
+            powerUpActive ? 1 : (1 + (bubblesPopped % 25 == 0 ? 1 : 0));
+        maxBubblesOnScreen = powerUpActive ? 5 : 9;
+      } else {
+        // Fase avanzada: 1-2 burbujas por ciclo más frecuentes
+        bubblesThisCycle =
+            powerUpActive ? 1 : (1 + (bubblesPopped % 20 == 0 ? 1 : 0));
+        maxBubblesOnScreen = powerUpActive ? 6 : 10;
+      }
 
-        double posX =
-            random.nextDouble() * (MediaQuery.of(context).size.width - 80);
-        int speed = (baseSpeed - min(bubblesPopped * 15, 2000))
-            .clamp(1000, baseSpeed)
-            .toInt();
+      // Solo crear burbujas si no hay demasiadas en pantalla
+      if (bubbles.length < maxBubblesOnScreen) {
+        for (int i = 0;
+            i < bubblesThisCycle && bubbles.length < maxBubblesOnScreen;
+            i++) {
+          if (!isRunning || isPaused) break; // Verificar en cada iteración
 
-        // Burbujas más lentas durante power-up
-        if (powerUpActive) {
-          speed = (speed * 2.0).toInt(); // 100% más lentas (era 50%)
-        }
+          // Determinar si crear burbuja especial (mayor probabilidad durante power-up)
+          double specialChance =
+              powerUpActive ? 0.25 : 0.08; // 25% vs 8% (era 15% vs 5%)
+          bool shouldCreateSpecial = bubblesPopped > 5 &&
+              random.nextDouble() < specialChance; // Desde 5 burbujas (era 10)
 
-        // Determinar si crear burbuja especial (mayor probabilidad durante power-up)
-        double specialChance =
-            powerUpActive ? 0.25 : 0.08; // 25% vs 8% (era 15% vs 5%)
-        bool shouldCreateSpecial = bubblesPopped > 5 &&
-            random.nextDouble() < specialChance; // Desde 5 burbujas (era 10)
-
-        List<String> bubbleImages = [
-          'assets/images/bubble1.png',
-          'assets/images/bubble2.png',
-          'assets/images/bubble3.png'
-        ];
-        String img = bubbleImages[random.nextInt(bubbleImages.length)];
-        double size = 70 +
-            random.nextDouble() * 60; // Burbujas aún más grandes (era 60 + 50)
-
-        // Si es especial, hacer la burbuja dorada y más grande
-        if (shouldCreateSpecial) {
-          size = 90 +
+          List<String> bubbleImages = [
+            'assets/images/bubble1.png',
+            'assets/images/bubble2.png',
+            'assets/images/bubble3.png'
+          ];
+          String img = bubbleImages[random.nextInt(bubbleImages.length)];
+          double size = 70 +
               random.nextDouble() *
-                  40; // Burbujas especiales más grandes (era 80 + 30)
-        }
+                  60; // Burbujas aún más grandes (era 60 + 50)
 
-        bubbles.add(Bubble(
-          position: Offset(posX, 0),
-          size: size,
-          speed: speed *
-              (shouldCreateSpecial ? 1.5 : 1)
-                  .toInt(), // Burbujas especiales más lentas
-          key: UniqueKey(),
-          image: img,
-          isSpecial: shouldCreateSpecial,
-          specialType: shouldCreateSpecial ? 'life' : 'normal',
-        ));
+          // Si es especial, hacer la burbuja dorada y más grande
+          if (shouldCreateSpecial) {
+            size = 90 +
+                random.nextDouble() *
+                    40; // Burbujas especiales más grandes (era 80 + 30)
+          }
 
-        if (!isPaused) {
-          await spawnPlayer.play(AssetSource('sounds/bubble_spawn.mp3'),
-              volume: 0.2);
+          // Usar sistema anti-amontonamiento mejorado con el tamaño real
+          Offset position = _generateUniquePosition(size);
+
+          // Velocidad más lenta al principio, acelera gradualmente
+          int speed;
+          if (bubblesPopped < 30) {
+            // Fase inicial: muy lento para que sea fácil
+            speed = (baseSpeed - min(bubblesPopped * 10, 1000))
+                .clamp(3000, baseSpeed)
+                .toInt();
+          } else {
+            // Fase normal: acelera más
+            speed = (baseSpeed - min(bubblesPopped * 20, 3000))
+                .clamp(1500, baseSpeed)
+                .toInt();
+          }
+
+          // Burbujas más lentas durante power-up
+          if (powerUpActive) {
+            speed = (speed * 1.8).toInt(); // 80% más lentas
+          }
+
+          bubbles.add(Bubble(
+            position: position, // Usar posición anti-amontonamiento
+            size: size,
+            speed: speed *
+                (shouldCreateSpecial ? 1.5 : 1)
+                    .toInt(), // Burbujas especiales más lentas
+            key: UniqueKey(),
+            image: img,
+            isSpecial: shouldCreateSpecial,
+            specialType: shouldCreateSpecial ? 'life' : 'normal',
+          ));
+
+          if (!isPaused) {
+            await spawnPlayer.play(AssetSource('sounds/bubble_spawn.mp3'),
+                volume: 0.15); // Volumen más bajo para menos interferencia
+          }
+
+          // Pequeño delay entre burbujas del mismo ciclo para evitar amontonamiento visual
+          if (i < bubblesThisCycle - 1) {
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
         }
       }
       onUpdate();
@@ -265,7 +421,7 @@ class GameController {
 
     onUpdate();
     await updateHighScore();
-    await popPlayer.play(AssetSource('sounds/pop.mp3'));
+    // El sonido ahora se reproduce en el BubbleWidget para mejor sincronización
   }
 
   void removeBubbleWithoutSound(Bubble bubble) {

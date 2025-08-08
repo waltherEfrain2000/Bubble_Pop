@@ -27,22 +27,22 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Calcular estadísticas adicionales
-    double avgScore = stats.gameHistory.isNotEmpty 
-      ? stats.gameHistory.reduce((a, b) => a + b) / stats.gameHistory.length 
-      : 0;
-    
-    int recentGames = stats.gameHistory.length > 10 
-      ? 10 
-      : stats.gameHistory.length;
-    
+    double avgScore = stats.gameHistory.isNotEmpty
+        ? stats.gameHistory.reduce((a, b) => a + b) / stats.gameHistory.length
+        : 0;
+
+    int recentGames =
+        stats.gameHistory.length > 10 ? 10 : stats.gameHistory.length;
+
     List<int> recentScores = stats.gameHistory.length > 10
-      ? stats.gameHistory.sublist(stats.gameHistory.length - 10)
-      : stats.gameHistory;
+        ? stats.gameHistory.sublist(stats.gameHistory.length - 10)
+        : stats.gameHistory;
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 135, 206, 235),
       appBar: AppBar(
-        title: const Text('Estadísticas', style: TextStyle(color: Colors.white)),
+        title:
+            const Text('Estadísticas', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -69,13 +69,17 @@ class StatsScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Estadísticas Generales',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
                   ),
                   const SizedBox(height: 10),
                   if (stats.totalGamesPlayed > 0)
                     Text(
                       'Último juego: ${_formatDate(stats.lastPlayed)}',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      style: const TextStyle(
+                          fontSize: 14, color: Color.fromARGB(255, 0, 0, 0)),
                     ),
                   const SizedBox(height: 20),
                   Row(
@@ -117,7 +121,7 @@ class StatsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Historial reciente
             Expanded(
               child: Container(
@@ -138,7 +142,10 @@ class StatsScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Últimos $recentGames Juegos',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87),
                     ),
                     const SizedBox(height: 15),
                     Expanded(
@@ -146,28 +153,32 @@ class StatsScreen extends StatelessWidget {
                           ? const Center(
                               child: Text(
                                 'No hay historial de juegos',
-                                style: TextStyle(fontSize: 16, color: Colors.black87),
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.black87),
                               ),
                             )
                           : ListView.builder(
                               itemCount: recentScores.length,
                               itemBuilder: (context, index) {
-                                int score = recentScores[recentScores.length - 1 - index];
+                                int score = recentScores[
+                                    recentScores.length - 1 - index];
                                 bool isHighScore = score == stats.highScore;
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isHighScore 
+                                    color: isHighScore
                                         ? Colors.amber.withOpacity(0.2)
                                         : Colors.grey.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: isHighScore 
-                                        ? Border.all(color: Colors.amber, width: 2)
+                                    border: isHighScore
+                                        ? Border.all(
+                                            color: Colors.amber, width: 2)
                                         : null,
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Juego ${recentScores.length - index}',
@@ -187,11 +198,11 @@ class StatsScreen extends StatelessWidget {
                                             '$score puntos',
                                             style: TextStyle(
                                               fontSize: 16,
-                                              fontWeight: isHighScore 
-                                                  ? FontWeight.bold 
+                                              fontWeight: isHighScore
+                                                  ? FontWeight.bold
                                                   : FontWeight.normal,
-                                              color: isHighScore 
-                                                  ? Colors.amber[800] 
+                                              color: isHighScore
+                                                  ? Colors.amber[800]
                                                   : Colors.black,
                                             ),
                                           ),

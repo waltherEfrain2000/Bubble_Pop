@@ -62,39 +62,11 @@ class _LifeGainNotificationState extends State<LifeGainNotification>
               scale: _scaleAnimation.value,
               child: Opacity(
                 opacity: _opacityAnimation.value,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade400, Colors.green.shade600],
-                    ),
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.favorite,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        '+1 VIDA',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                child: const Text(
+                  '💚',
+                  style: TextStyle(
+                    fontSize: 80,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

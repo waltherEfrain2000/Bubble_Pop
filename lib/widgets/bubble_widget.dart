@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../models/bubble.dart';
 
 class BubbleWidget extends StatefulWidget {
@@ -20,21 +21,39 @@ class BubbleWidget extends StatefulWidget {
   State<BubbleWidget> createState() => _BubbleWidgetState();
 }
 
-class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderStateMixin {
+class _BubbleWidgetState extends State<BubbleWidget>
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+
+  // Controlador para animación de destrucción
+  late AnimationController _popController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _fadeAnimation;
+
+  // AudioPlayer local para sonido más suave
+  late AudioPlayer _popSoundPlayer;
+
   bool _popped = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Inicializar AudioPlayer local para sonido más suave
+    _popSoundPlayer = AudioPlayer();
+
+    // Animación principal de movimiento
     _controller = AnimationController(
       duration: Duration(milliseconds: widget.bubble.speed),
       vsync: this,
     );
     _animation = Tween<double>(begin: 0, end: 1).animate(_controller)
       ..addStatusListener((status) {
-        if (status == AnimationStatus.completed && !_popped && !widget.isPaused) {
+        if (status == AnimationStatus.completed &&
+            !_popped &&
+            !widget.isPaused) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !widget.isPaused) {
               widget.onRemoveWithoutSound();
@@ -42,6 +61,37 @@ class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderSt
           });
         }
       });
+
+    // Animaciones de destrucción
+    _popController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.5,
+    ).animate(CurvedAnimation(
+      parent: _popController,
+      curve: Curves.elasticOut,
+    ));
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(
+      parent: _popController,
+      curve: Curves.easeOut,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _popController,
+      curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+    ));
+
     _controller.forward();
   }
 
@@ -59,13 +109,46 @@ class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderSt
   @override
   void dispose() {
     _controller.dispose();
+    _popController.dispose();
+    _popSoundPlayer.dispose();
     super.dispose();
   }
 
-  void pop() {
-    if (!_popped && !widget.isPaused) { // No permitir pop si está pausado
+  void pop() async {
+    if (!_popped && !widget.isPaused) {
       setState(() => _popped = true);
-      Future.delayed(const Duration(milliseconds: 180), () => widget.onPop());
+
+      // Reproducir sonido inmediatamente con volumen más suave
+      await _playPopSound();
+
+      // Iniciar animación de destrucción
+      _popController.forward();
+
+      // Llamar onPop después de la animación
+      Future.delayed(const Duration(milliseconds: 300), () => widget.onPop());
+    }
+  }
+
+  // Método para reproducir sonido de pop más suave
+  Future<void> _playPopSound() async {
+    try {
+      // Volumen dinámico basado en el tamaño de la burbuja
+      double volume = (widget.bubble.size / 130.0).clamp(0.3, 0.8);
+
+      // Agregar variación de pitch simulada con diferentes volúmenes
+      if (widget.bubble.isSpecial) {
+        volume *= 1.2; // Burbujas especiales un poco más fuertes
+      }
+
+      await _popSoundPlayer.play(
+        AssetSource('sounds/pop.mp3'),
+        volume: volume,
+        mode:
+            PlayerMode.lowLatency, // Modo de baja latencia para mejor respuesta
+      );
+    } catch (e) {
+      // Silenciosamente ignorar errores de audio para no interrumpir el juego
+      print('Error reproduciendo sonido: $e');
     }
   }
 
@@ -87,14 +170,33 @@ class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderSt
               alignment: Alignment.center,
               children: [
                 _popped
-                    ? AnimatedOpacity(
-                        opacity: 0,
-                        duration: const Duration(milliseconds: 180),
-                        child: _buildBubbleImage(),
+                    ? AnimatedBuilder(
+                        animation: _popController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _scaleAnimation.value,
+                            child: Transform.rotate(
+                              angle: _rotationAnimation.value * 2 * pi,
+                              child: Opacity(
+                                opacity: _fadeAnimation.value,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    _buildBubbleImage(),
+                                    // Efecto de partículas
+                                    ..._buildParticles(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       )
                     : _buildBubbleImage(),
                 // Mostrar indicador de vida especial
-                if (widget.bubble.isSpecial && widget.bubble.specialType == 'life' && !_popped)
+                if (widget.bubble.isSpecial &&
+                    widget.bubble.specialType == 'life' &&
+                    !_popped)
                   Positioned(
                     child: Container(
                       padding: const EdgeInsets.all(4),
@@ -125,22 +227,54 @@ class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderSt
         height: widget.bubble.size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(widget.bubble.size / 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.amber.withOpacity(0.6),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
         ),
         child: Image.asset(
-          widget.bubble.image, 
+          widget.bubble.image,
           width: widget.bubble.size,
-          color: Colors.amber.withOpacity(0.7),
           colorBlendMode: BlendMode.overlay,
         ),
       );
     }
     return Image.asset(widget.bubble.image, width: widget.bubble.size);
+  }
+
+  // Crear efecto de partículas para la destrucción
+  List<Widget> _buildParticles() {
+    if (!_popped) return [];
+
+    List<Widget> particles = [];
+    Random random = Random();
+
+    for (int i = 0; i < 8; i++) {
+      double angle = (i * pi * 2) / 8;
+      double distance = 30 + random.nextDouble() * 20;
+
+      particles.add(
+        Positioned(
+          left: cos(angle) * distance * _scaleAnimation.value,
+          top: sin(angle) * distance * _scaleAnimation.value,
+          child: Transform.scale(
+            scale: 1.0 - _popController.value,
+            child: Container(
+              width: 4 + random.nextDouble() * 4,
+              height: 4 + random.nextDouble() * 4,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.bubble.isSpecial
+                    ? Colors.amber.withOpacity(0.8)
+                    : [
+                        Colors.blue,
+                        Colors.cyan,
+                        Colors.lightBlue
+                      ][random.nextInt(3)]
+                        .withOpacity(0.7),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return particles;
   }
 }

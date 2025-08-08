@@ -73,56 +73,11 @@ class _PowerUpNotificationState extends State<PowerUpNotification>
                 angle: _rotationAnimation.value * 0.5,
                 child: Opacity(
                   opacity: _opacityAnimation.value,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 25, vertical: 15),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.purple.shade400,
-                          Colors.purple.shade600,
-                          Colors.deepPurple.shade700
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.purple.withOpacity(0.4),
-                          blurRadius: 15,
-                          spreadRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.favorite,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                        SizedBox(width: 12),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'POWER-UP!',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Dificultad Reducida',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  child: const Text(
+                    '⚡',
+                    style: TextStyle(
+                      fontSize: 120,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),

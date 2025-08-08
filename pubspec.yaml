@@ -1,6 +1,6 @@
 name: bubble_pop
 description: Juego de explotar burbujas. ¡Relájate y suma puntos explotando burbujas!
-version: 1.2.0+3
+version: 1.3.0+5
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
