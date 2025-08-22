@@ -170,12 +170,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         ),
                       )
                     else
-                      Text('Próximo power-up: ${controller.nextPowerUpAt}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.purpleAccent,
-                            fontWeight: FontWeight.bold,
-                          )),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Próxima vida: ${controller.nextLifeBubbleAt}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              )),
+                          Text('Próximo slow: ${controller.nextSlowBubbleAt}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              )),
+                        ],
+                      ),
                     Row(
                       children: [
                         const Text('⭐',

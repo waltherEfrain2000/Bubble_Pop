@@ -8,6 +8,11 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// Función helper para obtener propiedades del keystore de forma segura
+fun getKeystoreProperty(key: String): String? {
+    return keystoreProperties.getProperty(key)
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -40,10 +45,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = file(keystoreProperties["storeFile"] as String?)
-            storePassword = keystoreProperties["storePassword"] as String?
+            keyAlias = keystoreProperties.getProperty("keyAlias") ?: "wally"
+            keyPassword = keystoreProperties.getProperty("keyPassword") ?: "Manchester2000"
+            storeFile = rootProject.file(keystoreProperties.getProperty("storeFile") ?: "keystore.jks")
+            storePassword = keystoreProperties.getProperty("storePassword") ?: "Manchester2000"
         }
     }
 

@@ -211,6 +211,24 @@ class _BubbleWidgetState extends State<BubbleWidget>
                       ),
                     ),
                   ),
+                // Mostrar indicador de lentitud especial
+                if (widget.bubble.isSpecial &&
+                    widget.bubble.specialType == 'slow' &&
+                    !_popped)
+                  Positioned(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.schedule,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -221,7 +239,7 @@ class _BubbleWidgetState extends State<BubbleWidget>
 
   Widget _buildBubbleImage() {
     if (widget.bubble.isSpecial && widget.bubble.specialType == 'life') {
-      // Burbuja especial con efecto dorado
+      // Burbuja especial de vida con efecto dorado
       return Container(
         width: widget.bubble.size,
         height: widget.bubble.size,
@@ -231,6 +249,21 @@ class _BubbleWidgetState extends State<BubbleWidget>
         child: Image.asset(
           widget.bubble.image,
           width: widget.bubble.size,
+          colorBlendMode: BlendMode.overlay,
+        ),
+      );
+    } else if (widget.bubble.isSpecial && widget.bubble.specialType == 'slow') {
+      // Burbuja especial de lentitud con efecto azul
+      return Container(
+        width: widget.bubble.size,
+        height: widget.bubble.size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.bubble.size / 2),
+        ),
+        child: Image.asset(
+          widget.bubble.image,
+          width: widget.bubble.size,
+          color: Colors.blue.withOpacity(0.3),
           colorBlendMode: BlendMode.overlay,
         ),
       );
@@ -261,7 +294,9 @@ class _BubbleWidgetState extends State<BubbleWidget>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.bubble.isSpecial
-                    ? Colors.amber.withOpacity(0.8)
+                    ? (widget.bubble.specialType == 'life' 
+                        ? Colors.amber.withOpacity(0.8)
+                        : Colors.blue.withOpacity(0.8))
                     : [
                         Colors.blue,
                         Colors.cyan,

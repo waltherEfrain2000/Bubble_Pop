@@ -19,28 +19,30 @@ class GameController {
   int bubblesMissed = 0;
   int maxLives = 5; // Más vidas máximas para facilitar
   int currentLives = 5; // Más vidas iniciales
-  int baseSpeed = 6000; // Mucho más lento al principio (era 4500)
+  int baseSpeed = 8000; // Mantener velocidad actual
   int baseInterval =
-      2500; // Intervalo más largo para mejor distribución (era 1800)
+      800; // Intervalo más corto para más burbujas frecuentes
   bool isRunning = false;
   bool isPaused = false;
 
   // Sistema anti-amontonamiento mejorado
   final List<Offset> _recentPositions = [];
   final double _minDistance =
-      120.0; // Distancia mínima aumentada para evitar pegado visual
+      90.0; // Distancia mínima ligeramente reducida para más burbujas
   double _screenWidth = 400.0; // Ancho por defecto
   int _lastUsedZone = -1; // Para alternar zonas
 
-  // Sistema de vidas extra (más fácil de conseguir)
-  int nextLifeAt = 30; // Próxima vida a los 30 puntos (era 50)
-  int lifeIncrement = 60; // Cada 60 puntos (era 100)
+  // Sistema de vidas extra (más restrictivo)
+  int nextLifeAt = 30; // Próxima vida a los 30 puntos
+  int lifeIncrement = 60; // Cada 60 puntos
 
-  // Sistema de power-ups (más frecuentes)
-  int nextPowerUpAt = 20; // Próximo power-up a las 20 burbujas (era 25)
-  int powerUpIncrement = 20; // Cada 20 burbujas (era 25)
-  bool powerUpActive = false; // Si hay un power-up activo
-  int powerUpDuration = 15000; // Duración en ms (15 segundos, era 10)
+  // Sistema de power-ups separado para vida y lentitud
+  int nextLifeBubbleAt = 50; // Burbuja de vida cada 50 burbujas reventadas
+  int lifeBubbleIncrement = 50; // Cada 50 burbujas
+  int nextSlowBubbleAt = 70; // Burbuja de lentitud cada 70 burbujas reventadas
+  int slowBubbleIncrement = 70; // Cada 70 burbujas
+  bool powerUpActive = false; // Si hay un power-up de lentitud activo
+  int powerUpDuration = 5000; // Duración en ms (5 segundos)
   DateTime? powerUpStartTime; // Cuando empezó el power-up
 
   // Nuevas variables para estadísticas
@@ -61,11 +63,11 @@ class GameController {
 
   // Generar posición única sin superposición usando más zonas y tamaños reales
   Offset _generateUniquePosition(double bubbleSize) {
-    const int totalZones = 8; // Más zonas para mejor distribución
-    const int maxAttempts = 30; // Más intentos
+    const int totalZones = 14; // Más zonas para mejor distribución
+    const int maxAttempts = 60; // Más intentos para encontrar espacio
 
-    // Usar la mitad del tamaño de la burbuja como radio de seguridad
-    double safetyRadius = bubbleSize / 2;
+    // Usar un radio de seguridad equilibrado
+    double safetyRadius = bubbleSize * 0.8;
     double minDistanceForSize = _minDistance + safetyRadius;
 
     // Intentar usar zona diferente a la anterior
@@ -100,7 +102,8 @@ class GameController {
         if (isPositionFree) {
           for (final bubble in bubbles) {
             final double distance = (newPosition - bubble.position).distance;
-            double requiredDistance = minDistanceForSize + (bubble.size / 2);
+            // Usar distancia equilibrada para permitir más burbujas
+            double requiredDistance = (bubbleSize + bubble.size) / 2 + 15; // 15 píxeles de separación
             if (distance < requiredDistance) {
               isPositionFree = false;
               break;
@@ -113,8 +116,8 @@ class GameController {
           _recentPositions.add(newPosition);
           _lastUsedZone = currentZone;
 
-          // Mantener solo las últimas 15 posiciones
-          if (_recentPositions.length > 15) {
+          // Mantener solo las últimas 25 posiciones para más espacio
+          if (_recentPositions.length > 25) {
             _recentPositions.removeAt(0);
           }
 
@@ -128,6 +131,21 @@ class GameController {
     double zoneWidth = _screenWidth / totalZones;
     double x = fallbackZone * zoneWidth + (zoneWidth - bubbleSize) / 2;
     x = x.clamp(bubbleSize / 2, _screenWidth - bubbleSize / 2);
+
+    final fallbackPosition = Offset(x, 0);
+    
+    // Verificar que el fallback no esté muy cerca de burbujas existentes
+    for (final bubble in bubbles) {
+      final double distance = (fallbackPosition - bubble.position).distance;
+      double requiredDistance = (bubbleSize + bubble.size) / 2 + 15;
+      if (distance < requiredDistance) {
+        // Si está muy cerca, mover horizontalmente
+        x += requiredDistance;
+        if (x > _screenWidth - bubbleSize / 2) {
+          x = bubbleSize / 2;
+        }
+      }
+    }
 
     _lastUsedZone = fallbackZone;
     return Offset(x, 0);
@@ -174,7 +192,6 @@ class GameController {
   void activatePowerUp() async {
     powerUpActive = true;
     powerUpStartTime = DateTime.now();
-    nextPowerUpAt += powerUpIncrement;
 
     // Sonido especial para power-up
     await bonusPlayer.play(AssetSource('sounds/bubble_spawn.mp3'));
@@ -228,7 +245,8 @@ class GameController {
     bubblesMissed = 0;
     currentLives = maxLives; // Resetear vidas
     nextLifeAt = 30; // Resetear contador de próxima vida
-    nextPowerUpAt = 20; // Resetear contador de próximo power-up (era 25)
+    nextLifeBubbleAt = 50; // Resetear contador de burbuja de vida
+    nextSlowBubbleAt = 70; // Resetear contador de burbuja de lentitud
     powerUpActive = false; // Resetear power-up
     powerUpStartTime = null;
     bubbles.clear();
@@ -261,22 +279,22 @@ class GameController {
       int difficultyMultiplier =
           powerUpActive ? 2 : 1; // Más lento cuando hay power-up
 
-      // Intervalo ajustado para mejor distribución temporal
+      // Intervalo ajustado para más burbujas frecuentes
       int interval;
       if (bubblesPopped < 50) {
-        // Fase inicial: intervalos más largos para evitar amontonamiento
-        interval = (baseInterval - min(bubblesPopped * 10, 600))
-            .clamp(1800, baseInterval)
+        // Fase inicial: intervalos cortos para llenar pantalla
+        interval = (baseInterval - min(bubblesPopped * 3, 200))
+            .clamp(600, baseInterval)
             .toInt();
       } else if (bubblesPopped < 100) {
-        // Fase intermedia: intervalos medianos
-        interval = (baseInterval - min(bubblesPopped * 15, 1000))
-            .clamp(1200, baseInterval)
+        // Fase intermedia: intervalos más cortos
+        interval = (baseInterval - min(bubblesPopped * 5, 300))
+            .clamp(500, baseInterval)
             .toInt();
       } else {
-        // Fase avanzada: intervalos más cortos pero controlados
-        interval = (baseInterval - min(bubblesPopped * 20, 1600))
-            .clamp(800, baseInterval)
+        // Fase avanzada: intervalos muy cortos para acción intensa
+        interval = (baseInterval - min(bubblesPopped * 7, 500))
+            .clamp(300, baseInterval)
             .toInt();
       }
 
@@ -287,42 +305,59 @@ class GameController {
       // Verificar nuevamente si no está pausado antes de crear burbujas
       if (!isRunning || isPaused) continue;
 
-      // Configuración mejorada: burbujas controladas y bien espaciadas
+      // Configuración para más burbujas - uso de ambas manos
       int maxBubblesOnScreen =
-          powerUpActive ? 5 : 8; // Reducir cantidad en pantalla
+          powerUpActive ? 10 : 18; // Más burbujas para usar ambas manos
 
-      // Reducir burbujas por ciclo para mejor distribución temporal
+      // Más burbujas por ciclo para llenar la pantalla
       int bubblesThisCycle;
       if (bubblesPopped < 50) {
-        // Fase inicial: 1-2 burbujas por ciclo para evitar amontonamiento
+        // Fase inicial: 2-3 burbujas por ciclo
         bubblesThisCycle =
-            powerUpActive ? 1 : (1 + (bubblesPopped % 30 == 0 ? 1 : 0));
+            powerUpActive ? 2 : (2 + (bubblesPopped % 15 == 0 ? 1 : 0));
         maxBubblesOnScreen =
-            powerUpActive ? 5 : 8; // Menos burbujas en pantalla
+            powerUpActive ? 10 : 15; // Buena cantidad en pantalla
       } else if (bubblesPopped < 100) {
-        // Fase intermedia: 1-2 burbujas por ciclo
+        // Fase intermedia: 3-4 burbujas por ciclo
         bubblesThisCycle =
-            powerUpActive ? 1 : (1 + (bubblesPopped % 25 == 0 ? 1 : 0));
-        maxBubblesOnScreen = powerUpActive ? 5 : 9;
+            powerUpActive ? 2 : (3 + (bubblesPopped % 12 == 0 ? 1 : 0));
+        maxBubblesOnScreen = powerUpActive ? 12 : 18;
       } else {
-        // Fase avanzada: 1-2 burbujas por ciclo más frecuentes
+        // Fase avanzada: 3-5 burbujas por ciclo para máxima acción
         bubblesThisCycle =
-            powerUpActive ? 1 : (1 + (bubblesPopped % 20 == 0 ? 1 : 0));
-        maxBubblesOnScreen = powerUpActive ? 6 : 10;
+            powerUpActive ? 3 : (4 + (bubblesPopped % 10 == 0 ? 1 : 0));
+        maxBubblesOnScreen = powerUpActive ? 15 : 22;
       }
 
       // Solo crear burbujas si no hay demasiadas en pantalla
       if (bubbles.length < maxBubblesOnScreen) {
+        // Verificar power-ups antes del ciclo
+        bool powerUpCreatedThisCycle = false;
+        
         for (int i = 0;
             i < bubblesThisCycle && bubbles.length < maxBubblesOnScreen;
             i++) {
           if (!isRunning || isPaused) break; // Verificar en cada iteración
 
-          // Determinar si crear burbuja especial (mayor probabilidad durante power-up)
-          double specialChance =
-              powerUpActive ? 0.25 : 0.08; // 25% vs 8% (era 15% vs 5%)
-          bool shouldCreateSpecial = bubblesPopped > 5 &&
-              random.nextDouble() < specialChance; // Desde 5 burbujas (era 10)
+          // Determinar si crear burbuja especial según el tipo (solo una por ciclo)
+          bool shouldCreateLifeBubble = bubblesPopped >= nextLifeBubbleAt && !powerUpCreatedThisCycle;
+          bool shouldCreateSlowBubble = bubblesPopped >= nextSlowBubbleAt && !powerUpActive && !powerUpCreatedThisCycle;
+          
+          // Priorizar burbuja de lentitud si ambas están disponibles
+          bool shouldCreateSpecial = false;
+          String specialType = 'normal';
+          
+          if (shouldCreateSlowBubble) {
+            shouldCreateSpecial = true;
+            specialType = 'slow';
+            nextSlowBubbleAt = bubblesPopped + slowBubbleIncrement; // Establecer próximo objetivo
+            powerUpCreatedThisCycle = true;
+          } else if (shouldCreateLifeBubble) {
+            shouldCreateSpecial = true;
+            specialType = 'life';
+            nextLifeBubbleAt = bubblesPopped + lifeBubbleIncrement; // Establecer próximo objetivo
+            powerUpCreatedThisCycle = true;
+          }
 
           List<String> bubbleImages = [
             'assets/images/bubble1.png',
@@ -372,7 +407,7 @@ class GameController {
             key: UniqueKey(),
             image: img,
             isSpecial: shouldCreateSpecial,
-            specialType: shouldCreateSpecial ? 'life' : 'normal',
+            specialType: specialType,
           ));
 
           if (!isPaused) {
@@ -380,9 +415,9 @@ class GameController {
                 volume: 0.15); // Volumen más bajo para menos interferencia
           }
 
-          // Pequeño delay entre burbujas del mismo ciclo para evitar amontonamiento visual
+          // Delay optimizado para distribución rápida pero controlada
           if (i < bubblesThisCycle - 1) {
-            await Future.delayed(const Duration(milliseconds: 300));
+            await Future.delayed(const Duration(milliseconds: 200));
           }
         }
       }
@@ -393,22 +428,23 @@ class GameController {
   void popBubble(Bubble bubble) async {
     bubbles.removeWhere((b) => b.key == bubble.key);
 
-    // Si es una burbuja especial, dar vida extra
+    // Si es una burbuja especial de vida, dar vida extra
     if (bubble.isSpecial && bubble.specialType == 'life' && currentLives < 5) {
       currentLives += 1;
       score += 5; // Bonus de puntos por burbuja especial
       await bonusPlayer.play(AssetSource('sounds/bubble_spawn.mp3'));
       onUpdate(); // Actualizar UI inmediatamente
-    } else {
+    } 
+    // Si es una burbuja especial de lentitud, activar power-up
+    else if (bubble.isSpecial && bubble.specialType == 'slow' && !powerUpActive) {
+      score += 5; // Bonus de puntos por burbuja especial
+      activatePowerUp(); // Activar power-up de lentitud
+    } 
+    else {
       score += 1;
     }
 
     bubblesPopped += 1;
-
-    // Verificar si activar power-up por burbujas reventadas
-    if (bubblesPopped >= nextPowerUpAt && !powerUpActive) {
-      activatePowerUp();
-    }
 
     // Verificar si el jugador merece una vida extra por puntos
     if (score >= nextLifeAt && currentLives < 7) {
@@ -430,7 +466,12 @@ class GameController {
 
     bubbles.removeWhere((b) => b.key == bubble.key);
     bubblesMissed += 1;
-    currentLives -= 1; // Perder una vida en lugar de contar missed
+    
+    // Solo perder vida si NO es una burbuja especial (power-up)
+    if (!bubble.isSpecial) {
+      currentLives -= 1; // Perder una vida solo por burbujas normales
+    }
+    
     onUpdate();
 
     if (currentLives <= 0) {
